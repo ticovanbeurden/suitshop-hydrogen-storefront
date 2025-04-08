@@ -7,7 +7,7 @@ export function ProductImage({
   image: ProductVariantFragment['image'];
 }) {
   if (!image) {
-    return <div className="product-image" />;
+    return <div>No image found</div>;
   }
   return (
     <div className="product-image">

@@ -1,7 +1,8 @@
-import {createHydrogenContext} from '@shopify/hydrogen';
+import {createHydrogenContext, createWithCache} from '@shopify/hydrogen';
 import {AppSession} from '~/lib/session';
 import {CART_QUERY_FRAGMENT} from '~/lib/fragments';
 import {getLocaleFromRequest} from '~/lib/i18n';
+import type {SanityClient} from '@sanity/client';
 
 /**
  * The context implementation is separate from server.ts
@@ -39,6 +40,16 @@ export async function createAppLoadContext(
 
   return {
     ...hydrogenContext,
+    cache,
     // declare additional Remix loader context
   };
+}
+
+// Extend the AppLoadContext type to include Sanity and withCache
+declare module '@shopify/remix-oxygen' {
+  export interface AppLoadContext {
+    sanity: SanityClient;
+    withCache: ReturnType<typeof createWithCache>;
+    cache: Cache;
+  }
 }

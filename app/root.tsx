@@ -5,9 +5,11 @@ import {
   useRouteError,
   isRouteErrorResponse,
   type ShouldRevalidateFunction,
+  useLoaderData,
 } from '@remix-run/react';
 import favicon from '~/assets/favicon.svg';
 import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
+import {VisualEditing} from '@sanity/visual-editing/react';
 
 export type RootLoader = typeof loader;
 
@@ -64,7 +66,7 @@ export async function loader(args: LoaderFunctionArgs) {
   // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
 
-  const {storefront, env} = args.context;
+  const {storefront, env, sanity} = args.context;
 
   return {
     ...deferredData,
@@ -82,6 +84,9 @@ export async function loader(args: LoaderFunctionArgs) {
       country: args.context.storefront.i18n.country,
       language: args.context.storefront.i18n.language,
     },
+    preview: !!env.SANITY_API_TOKEN,
+    projectId: env.SANITY_PROJECT_ID,
+    dataset: env.SANITY_DATASET,
   };
 }
 
@@ -134,7 +139,14 @@ function loadDeferredData({context}: LoaderFunctionArgs) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const data = useLoaderData<typeof loader>();
+
+  return (
+    <>
+      <Outlet />
+      {data.preview ? <VisualEditing portal /> : null}
+    </>
+  );
 }
 
 export function ErrorBoundary() {

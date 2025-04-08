@@ -46,7 +46,12 @@ export default defineConfig({
        * Include 'example-dep' in the array below.
        * @see https://vitejs.dev/config/dep-optimization-options
        */
-      include: [],
+      include: [
+        'lodash/startCase.js',
+        'react-is',
+        'shallowequal',
+        'react-compiler-runtime',
+      ],
     },
   },
 });

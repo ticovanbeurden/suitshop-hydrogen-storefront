@@ -3,9 +3,10 @@
 // @ts-ignore
 // eslint-disable-next-line import/no-unresolved
 import * as remixBuild from 'virtual:remix/server-build';
-import {storefrontRedirect} from '@shopify/hydrogen';
+import {storefrontRedirect, createWithCache} from '@shopify/hydrogen';
 import {createRequestHandler} from '@shopify/remix-oxygen';
 import {createAppLoadContext} from '~/lib/context';
+import {createClient} from 'hydrogen-sanity';
 
 /**
  * Export a fetch handler in module format.
@@ -23,6 +24,23 @@ export default {
         executionContext,
       );
 
+      // Create withCache handler
+      const withCache = createWithCache({
+        cache: appLoadContext.cache,
+        waitUntil: executionContext.waitUntil,
+        request,
+      });
+
+      // Configure Sanity client
+      const sanity = createClient({
+        projectId: env.SANITY_PROJECT_ID,
+        dataset: env.SANITY_DATASET,
+        apiVersion: env.SANITY_API_VERSION || '2023-03-30',
+        useCdn: process.env.NODE_ENV === 'production',
+        token: env.SANITY_API_TOKEN,
+        perspective: env.SANITY_API_TOKEN ? 'previewDrafts' : 'published',
+      });
+
       /**
        * Create a Remix request handler and pass
        * Hydrogen's Storefront client to the loader context.
@@ -30,7 +48,11 @@ export default {
       const handleRequest = createRequestHandler({
         build: remixBuild,
         mode: process.env.NODE_ENV,
-        getLoadContext: () => appLoadContext,
+        getLoadContext: () => ({
+          ...appLoadContext,
+          sanity,
+          withCache,
+        }),
       });
 
       const response = await handleRequest(request);

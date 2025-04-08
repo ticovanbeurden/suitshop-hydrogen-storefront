@@ -1,4 +1,4 @@
-import {type LoaderFunctionArgs} from '@shopify/remix-oxygen';
+import {type LoaderFunctionArgs, json} from '@shopify/remix-oxygen';
 import {useLoaderData, type MetaFunction} from '@remix-run/react';
 import {
   getSelectedProductOptions,
@@ -11,6 +11,9 @@ import {
 import {ProductPrice} from '~/components/ProductPrice';
 import {ProductImage} from '~/components/ProductImage';
 import {ProductForm} from '~/components/ProductForm';
+import {PortableText} from '@portabletext/react';
+import type {SanityDocument} from '@sanity/client';
+import {groq} from 'hydrogen-sanity/groq';
 
 export const meta: MetaFunction<typeof loader> = ({data}) => {
   return [
@@ -22,14 +25,25 @@ export const meta: MetaFunction<typeof loader> = ({data}) => {
   ];
 };
 
-export async function loader(args: LoaderFunctionArgs) {
+export async function loader({
+  params,
+  context,
+  request,
+}: LoaderFunctionArgs) {
+  const {storefront, sanity} = context;
   // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args);
+  const deferredData = loadDeferredData({params, context, request});
 
   // Await the critical data required to render initial state of the page
-  const criticalData = await loadCriticalData(args);
+  const criticalData = await loadCriticalData({params, context, request});
 
-  return {...deferredData, ...criticalData};
+  const query = groq`*[_type == "product" && store.slug.current == $handle][0]{
+      body,
+      "image": store.previewImageUrl
+  }`;
+  const initial = await sanity.fetch<SanityDocument>(query, params);
+
+  return json({...deferredData, ...criticalData, initial});
 }
 
 /**
@@ -41,8 +55,8 @@ async function loadCriticalData({
   params,
   request,
 }: LoaderFunctionArgs) {
-  const {handle} = params;
   const {storefront} = context;
+  const {handle} = params;
 
   if (!handle) {
     throw new Error('Expected product handle to be defined');
@@ -69,7 +83,7 @@ async function loadCriticalData({
  * fetched after the initial page load. If it's unavailable, the page should still 200.
  * Make sure to not throw any errors here, as it will cause the page to 500.
  */
-function loadDeferredData({context, params}: LoaderFunctionArgs) {
+function loadDeferredData({context, params, request}: LoaderFunctionArgs) {
   // Put any API calls that is not critical to be available on first page render
   // For example: product reviews, product recommendations, social feeds.
 
@@ -77,7 +91,8 @@ function loadDeferredData({context, params}: LoaderFunctionArgs) {
 }
 
 export default function Product() {
-  const {product} = useLoaderData<typeof loader>();
+  const {product, initial} = useLoaderData<typeof loader>();
+
 
   // Optimistically selects a variant with given available variant information
   const selectedVariant = useOptimisticVariant(
@@ -117,7 +132,11 @@ export default function Product() {
           <strong>Description</strong>
         </p>
         <br />
-        <div dangerouslySetInnerHTML={{__html: descriptionHtml}} />
+        {initial?.body ? (
+          <PortableText value={initial.body} />
+        ) : (
+          <div dangerouslySetInnerHTML={{__html: descriptionHtml}} />
+        )}
         <br />
       </div>
       <Analytics.ProductView

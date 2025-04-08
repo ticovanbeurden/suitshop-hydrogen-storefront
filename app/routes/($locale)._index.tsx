@@ -59,8 +59,15 @@ export default function Homepage() {
   const data = useLoaderData<typeof loader>();
   return (
     <div className="home">
-      <FeaturedCollection collection={data.featuredCollection} />
-      <RecommendedProducts products={data.recommendedProducts} />
+      <AllProductsLink />
+    </div>
+  );
+}
+
+function AllProductsLink() {
+  return (
+    <div className="mx-auto p-12 prose prose-xl prose-a:text-blue-500">
+      <Link to="/products">All Products</Link>
     </div>
   );
 }
